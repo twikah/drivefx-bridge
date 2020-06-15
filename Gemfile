@@ -31,8 +31,10 @@ gem 'jbuilder', '~> 2.7'
 gem 'bootsnap', '>= 1.4.2', require: false
 
 group :development, :test do
-  # Call 'byebug' anywhere in the code to stop execution and get a debugger console
+  gem 'dotenv-rails', '~> 2.7', '>= 2.7.5'
+  # Call 'byebug' and 'pry' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
+  gem 'pry-rails'
   # Use sqlite3 as the database for Active Record
   gem 'sqlite3', '~> 1.4'
 end
