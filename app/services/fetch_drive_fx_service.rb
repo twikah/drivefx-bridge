@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require 'net/http'
 require 'uri'
 require 'json'
 
+# Methods used to access and fetch records from DriveFx API
 class FetchDriveFxService
   # Generates DriveFx API Access Token
   def generate_access_token
@@ -23,8 +26,10 @@ class FetchDriveFxService
         'tokenLifeTime': 'Never'
       } }
 
-    # Calls the API and returns the Access Token
-    api_call(uri, header, credentials)
+    # Calls the API
+    response_serialized = api_call(uri, header, credentials)
+    # returns the Access Token
+    response_serialized.values.last
   end
 
   # Gets all the products on 'armazem 1'
@@ -40,10 +45,7 @@ class FetchDriveFxService
             'comparison': 0,
             'valueItem': 1,
             'groupItem': 0
-          }],
-          'offset': 0,
-          'orderByItems': [],
-          'SelectItems': []
+          }]
         }
       }
 
@@ -65,10 +67,7 @@ class FetchDriveFxService
             'valueItem': product_ref,
             'groupItem': 0
           }],
-          'limit': 20,
-          'offset': 0,
-          'orderByItems': [],
-          'SelectItems': []
+          'limit': 20
         }
       }
 
@@ -100,9 +99,9 @@ class FetchDriveFxService
 
     # Sends the request
     response = http.request(request)
-    response_serialized = JSON.parse response.read_body
 
-    # Returns the elements of the last key-value pair of response's body
-    response_serialized.values.last
+    # Returns the response's body
+    JSON.parse response.read_body
+    # response_serialized.values.last
   end
 end
