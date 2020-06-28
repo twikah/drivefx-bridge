@@ -6,34 +6,13 @@ require 'json'
 
 # Methods used to access and fetch records from DriveFx API
 class FetchDriveFxService
-  # Generates DriveFx API Access Token
-  def generate_access_token
-    # Raises an error if any of the required credentials are missing
-    env_vars = [ENV['DFX_BEND_URL'], ENV['DFX_APP_ID'], ENV['DFX_USERCODE'],
-                ENV['DFX_PASSWORD']]
-    raise 'Missing credentials' if env_vars.any?(&:empty?)
-
-    # POST request details
-    uri = URI.parse('https://interface.phcsoftware.com/v3/generateAccessToken')
-    header = { 'Content-Type': 'application/json' }
-    credentials =
-      { 'credentials': {
-        'backendUrl': ENV['DFX_BEND_URL'],
-        'appId': ENV['DFX_APP_ID'],
-        'userCode': ENV['DFX_USERCODE'],
-        'password': ENV['DFX_PASSWORD'],
-        'company': '',
-        'tokenLifeTime': 'Never'
-      } }
-
-    # Calls the API
-    response_serialized = api_call(uri, header, credentials)
-    # returns the Access Token
-    response_serialized.values.last
+  def initialize
+    @token = nil
+    @token_lock = Mutex.new
   end
 
   # Gets all the products on 'armazem 1'
-  def fetch_warehouse_products(generate_access_token)
+  def fetch_warehouse_products
     search_params =
       {
         'queryObject': {
@@ -50,11 +29,12 @@ class FetchDriveFxService
       }
 
     # Calls the fetch method to call the API and fetches products
-    fetch(generate_access_token, search_params)
+    response_serialized = fetch(search_params)
+    response_serialized['entities']
   end
 
   # Gets the product details for a specific product reference
-  def fetch_product_details(generate_access_token, product_ref)
+  def fetch_product_details(product_ref)
     search_params =
       {
         'queryObject': {
@@ -72,19 +52,23 @@ class FetchDriveFxService
       }
 
     # Calls the fetch method to call the API and fetches specific product
-    fetch(generate_access_token, search_params)
+    response_serialized = fetch(search_params)
+    # Returns the details of the specific product or nil if response_serialized
+    # is nil
+    response_serialized && response_serialized['entities']
   end
 
   # Method that fetches records from the DriveFx API
-  def fetch(generate_access_token, search_params)
+  def fetch(search_params)
+    token = fetch_auth_token
     # Raises an error if the API token is missing
-    raise 'Missing API access token' if generate_access_token.empty?
+    raise 'Missing API access token' if token.empty?
 
     # POST request details
     uri = URI.parse('https://interface.phcsoftware.com/v3/searchEntities')
     header =
       { 'Content-Type': 'application/json',
-        'Authorization': generate_access_token }
+        'Authorization': token }
 
     api_call(uri, header, search_params)
   end
@@ -96,12 +80,45 @@ class FetchDriveFxService
     http.use_ssl = true
     request = Net::HTTP::Post.new(uri.request_uri, header)
     request.body = search_params.to_json
-
     # Sends the request
     response = http.request(request)
-
-    # Returns the response's body
     JSON.parse response.read_body
-    # response_serialized.values.last
+  end
+
+  private
+
+  # Generates DriveFx API Access Token
+  def fetch_auth_token
+    @token_lock.synchronize {
+      return @token unless @token.nil?
+      @token ||= generate_auth_token
+    }
+  end
+
+  def generate_auth_token
+    # Raises an error if any of the required credentials are missing
+    env_vars = [
+      ENV['DFX_BEND_URL'], ENV['DFX_APP_ID'], ENV['DFX_USERCODE'], ENV['DFX_PASSWORD']
+    ]
+
+    raise 'Missing credentials' if env_vars.any?(&:empty?)
+
+    # POST request details
+    uri = URI.parse('https://interface.phcsoftware.com/v3/generateAccessToken')
+    header = { 'Content-Type': 'application/json' }
+    credentials =
+      { 'credentials': {
+        'backendUrl': ENV['DFX_BEND_URL'],
+        'appId': ENV['DFX_APP_ID'],
+        'userCode': ENV['DFX_USERCODE'],
+        'password': ENV['DFX_PASSWORD'],
+        'company': '',
+        'tokenLifeTime': 'Never'
+      } }
+
+    # Calls the API
+    response_serialized = api_call(uri, header, credentials)
+    # Returns the Access Token
+    response_serialized['token']
   end
 end
