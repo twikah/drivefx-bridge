@@ -66,8 +66,10 @@ class DriveFxRepoService
             product.merge!(details)
 
             if existing_product.present?
+              puts "Product with ref #{wh_product['ref']} exists, updating..."
               existing_product.update(product)
             else
+              puts "Product with ref #{wh_product['ref']} does not exist, creating..."
               Product.create!(product)
             end
           end
